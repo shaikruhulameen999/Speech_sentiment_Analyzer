@@ -24,7 +24,6 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Main background */
 .stApp {
     background:
         radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.35), transparent 30%),
@@ -33,14 +32,12 @@ st.markdown("""
     color: white;
 }
 
-/* Main container */
 .block-container {
     max-width: 900px;
     padding-top: 2rem;
     padding-bottom: 3rem;
 }
 
-/* Title */
 .main-title {
     text-align: center;
     font-size: 48px;
@@ -51,7 +48,6 @@ st.markdown("""
     margin-bottom: 5px;
 }
 
-/* Subtitle */
 .subtitle {
     text-align: center;
     font-size: 18px;
@@ -59,7 +55,6 @@ st.markdown("""
     margin-bottom: 30px;
 }
 
-/* Glass card */
 .glass-card {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -70,7 +65,6 @@ st.markdown("""
     box-shadow: 0 10px 35px rgba(0,0,0,0.30);
 }
 
-/* Section heading */
 .section-title {
     font-size: 25px;
     font-weight: 700;
@@ -78,7 +72,6 @@ st.markdown("""
     margin-bottom: 15px;
 }
 
-/* Buttons */
 .stButton > button {
     width: 100%;
     border-radius: 14px;
@@ -97,19 +90,12 @@ st.markdown("""
     box-shadow: 0 10px 30px rgba(139,92,246,0.55);
 }
 
-/* Radio buttons */
 .stRadio > div {
     background: rgba(255,255,255,0.06);
     padding: 15px;
     border-radius: 15px;
 }
 
-/* Slider */
-.stSlider {
-    padding: 10px 0;
-}
-
-/* Result boxes */
 .result-box {
     background: rgba(255,255,255,0.08);
     border-radius: 18px;
@@ -118,7 +104,6 @@ st.markdown("""
     border: 1px solid rgba(255,255,255,0.12);
 }
 
-/* Sentiment */
 .positive {
     color: #4ade80;
     font-size: 30px;
@@ -137,7 +122,6 @@ st.markdown("""
     font-weight: 800;
 }
 
-/* Footer */
 .footer {
     text-align: center;
     color: #94a3b8;
@@ -167,18 +151,104 @@ st.markdown(
 
 
 # =====================================================
-# LOAD MODEL
+# LOAD DISTILBERT MODEL
 # =====================================================
 
 @st.cache_resource
 def load_model():
+
     sentiment_pipeline = pipeline(
         "sentiment-analysis",
         model="distilbert-base-uncased-finetuned-sst-2-english"
     )
+
     return sentiment_pipeline
 
-sentiment_pipeline = load_model()
+
+# Load model
+with st.spinner("🤖 Loading DistilBERT model..."):
+    sentiment_pipeline = load_model()
+
+
+# =====================================================
+# SENTIMENT DISPLAY FUNCTION
+# =====================================================
+
+def show_sentiment(text):
+
+    result = sentiment_pipeline(text)[0]
+
+    label = result["label"]
+    confidence = result["score"] * 100
+
+    st.markdown(
+        '<div class="result-box">',
+        unsafe_allow_html=True
+    )
+
+    st.markdown("### 🎯 Sentiment")
+
+    if label.upper() == "POSITIVE":
+
+        st.markdown(
+            '<div class="positive">😊 POSITIVE</div>',
+            unsafe_allow_html=True
+        )
+
+    elif label.upper() == "NEGATIVE":
+
+        st.markdown(
+            '<div class="negative">😞 NEGATIVE</div>',
+            unsafe_allow_html=True
+        )
+
+    else:
+
+        st.markdown(
+            '<div class="neutral">😐 NEUTRAL</div>',
+            unsafe_allow_html=True
+        )
+
+    st.markdown("### 📊 Confidence")
+
+    st.progress(min(int(confidence), 100))
+
+    st.write(
+        f"**{confidence:.2f}%**"
+    )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# =====================================================
+# SPEECH-TO-TEXT FUNCTION
+# =====================================================
+
+def convert_speech_to_text(audio_path):
+
+    recognizer = sr.Recognizer()
+
+    try:
+
+        with sr.AudioFile(audio_path) as source:
+
+            audio_data = recognizer.record(source)
+
+        text = recognizer.recognize_google(audio_data)
+
+        return text, None
+
+    except sr.UnknownValueError:
+
+        return None, "❌ Could not understand the audio."
+
+    except sr.RequestError:
+
+        return None, "❌ Google Speech Recognition service is unavailable."
+
+    except Exception as e:
+
+        return None, f"❌ Error processing audio: {str(e)}"
 
 
 # =====================================================
@@ -205,7 +275,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 
 # =====================================================
-# TALK
+# TALK / MICROPHONE
 # =====================================================
 
 if option == "🎤 Talk":
@@ -221,46 +291,57 @@ if option == "🎤 Talk":
     )
 
     st.write(
-        "Speak naturally and the system will convert your voice "
-        "into text and predict its sentiment."
+        "Click the microphone button below and speak naturally. "
+        "Your voice will be converted into text and analyzed."
     )
 
-    duration = st.slider(
-        "⏱️ Recording duration (seconds)",
-        3,
-        10,
-        5
+    # Browser microphone
+    audio_value = st.audio_input(
+        "🎙️ Click here to record your voice"
     )
 
-    if st.button("🎙️ Start Recording"):
-
-      
-        import scipy.io.wavfile as wav
-
-        sample_rate = 16000
-
-        st.info("🎤 Speak now...")
-
-        wav.write(
-            "voice_input.wav",
-            sample_rate,
-            audio
-        )
+    if audio_value is not None:
 
         st.success("✅ Recording completed!")
 
-        recognizer = sr.Recognizer()
+        # Get audio bytes
+        audio_bytes = audio_value.getvalue()
 
-        with sr.AudioFile("voice_input.wav") as source:
+        # Play recorded audio
+        st.audio(
+            audio_bytes,
+            format="audio/wav"
+        )
 
-            recorded_audio = recognizer.record(source)
+        # Save temporary WAV file
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".wav"
+        ) as temp_file:
 
-        try:
+            temp_file.write(audio_bytes)
 
-            text = recognizer.recognize_google(
-                recorded_audio
+            audio_path = temp_file.name
+
+        # Convert speech to text
+        with st.spinner("🎧 Converting speech to text..."):
+
+            text, error = convert_speech_to_text(
+                audio_path
             )
 
+        # Remove temporary file
+        if os.path.exists(audio_path):
+
+            os.remove(audio_path)
+
+        if error:
+
+            st.error(error)
+
+        else:
+
+            # Show transcription
             st.markdown(
                 '<div class="result-box">',
                 unsafe_allow_html=True
@@ -268,68 +349,14 @@ if option == "🎤 Talk":
 
             st.markdown("### 📝 Transcribed Text")
 
-            st.write(f"**{text}**")
+            st.write(
+                f"**{text}**"
+            )
 
             st.markdown("</div>", unsafe_allow_html=True)
 
             # Sentiment prediction
-
-            result = sentiment_pipeline(text)[0]
-
-            label = result["label"]
-            confidence = result["score"] * 100
-
-            st.markdown(
-                '<div class="result-box">',
-                unsafe_allow_html=True
-            )
-
-            st.markdown("### 🎯 Sentiment")
-
-            if label.upper() == "POSITIVE":
-
-                st.markdown(
-                    '<div class="positive">😊 POSITIVE</div>',
-                    unsafe_allow_html=True
-                )
-
-            elif label.upper() == "NEGATIVE":
-
-                st.markdown(
-                    '<div class="negative">😞 NEGATIVE</div>',
-                    unsafe_allow_html=True
-                )
-
-            else:
-
-                st.markdown(
-                    '<div class="neutral">😐 NEUTRAL</div>',
-                    unsafe_allow_html=True
-                )
-
-            st.markdown("### 📊 Confidence")
-
-            st.progress(
-                int(confidence)
-            )
-
-            st.write(
-                f"**{confidence:.2f}%**"
-            )
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        except sr.UnknownValueError:
-
-            st.error(
-                "❌ Could not understand the audio."
-            )
-
-        except sr.RequestError:
-
-            st.error(
-                "❌ Speech recognition service unavailable."
-            )
+            show_sentiment(text)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -351,7 +378,7 @@ else:
     )
 
     st.write(
-        "Upload a WAV audio file and analyze the sentiment."
+        "Upload a WAV audio file and analyze its sentiment."
     )
 
     uploaded_file = st.file_uploader(
@@ -361,6 +388,7 @@ else:
 
     if uploaded_file is not None:
 
+        # Display audio
         st.audio(
             uploaded_file,
             format="audio/wav"
@@ -368,31 +396,37 @@ else:
 
         if st.button("🔍 Analyze Audio"):
 
+            # Create temporary file
             with tempfile.NamedTemporaryFile(
                 delete=False,
                 suffix=".wav"
-            ) as temp:
+            ) as temp_file:
 
-                temp.write(
+                temp_file.write(
                     uploaded_file.getbuffer()
                 )
 
-                audio_path = temp.name
+                audio_path = temp_file.name
 
-            recognizer = sr.Recognizer()
+            # Convert speech to text
+            with st.spinner("🎧 Converting speech to text..."):
 
-            with sr.AudioFile(audio_path) as source:
-
-                recorded_audio = recognizer.record(
-                    source
+                text, error = convert_speech_to_text(
+                    audio_path
                 )
 
-            try:
+            # Remove temporary file
+            if os.path.exists(audio_path):
 
-                text = recognizer.recognize_google(
-                    recorded_audio
-                )
+                os.remove(audio_path)
 
+            if error:
+
+                st.error(error)
+
+            else:
+
+                # Show transcription
                 st.markdown(
                     '<div class="result-box">',
                     unsafe_allow_html=True
@@ -407,70 +441,7 @@ else:
                 st.markdown("</div>", unsafe_allow_html=True)
 
                 # Sentiment
-
-                result = sentiment_pipeline(text)[0]
-
-                label = result["label"]
-
-                confidence = result["score"] * 100
-
-                st.markdown(
-                    '<div class="result-box">',
-                    unsafe_allow_html=True
-                )
-
-                st.markdown("### 🎯 Sentiment")
-
-                if label.upper() == "POSITIVE":
-
-                    st.markdown(
-                        '<div class="positive">😊 POSITIVE</div>',
-                        unsafe_allow_html=True
-                    )
-
-                elif label.upper() == "NEGATIVE":
-
-                    st.markdown(
-                        '<div class="negative">😞 NEGATIVE</div>',
-                        unsafe_allow_html=True
-                    )
-
-                else:
-
-                    st.markdown(
-                        '<div class="neutral">😐 NEUTRAL</div>',
-                        unsafe_allow_html=True
-                    )
-
-                st.markdown("### 📊 Confidence")
-
-                st.progress(
-                    int(confidence)
-                )
-
-                st.write(
-                    f"**{confidence:.2f}%**"
-                )
-
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            except sr.UnknownValueError:
-
-                st.error(
-                    "❌ Could not understand the audio."
-                )
-
-            except sr.RequestError:
-
-                st.error(
-                    "❌ Speech recognition service unavailable."
-                )
-
-            finally:
-
-                if os.path.exists(audio_path):
-
-                    os.remove(audio_path)
+                show_sentiment(text)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
