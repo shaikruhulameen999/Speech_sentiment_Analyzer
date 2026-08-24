@@ -1,0 +1,6 @@
+streamlit
+SpeechRecognition
+transformers
+torch
+sentencepiece
+pydub
