@@ -234,7 +234,7 @@ if option == "🎤 Talk":
 
     if st.button("🎙️ Start Recording"):
 
-        import sounddevice as sd
+      
         import scipy.io.wavfile as wav
 
         sample_rate = 16000
