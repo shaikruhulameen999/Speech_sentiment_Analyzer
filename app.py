@@ -241,15 +241,6 @@ if option == "🎤 Talk":
 
         st.info("🎤 Speak now...")
 
-        audio = sd.rec(
-            int(duration * sample_rate),
-            samplerate=sample_rate,
-            channels=1,
-            dtype="int16"
-        )
-
-        sd.wait()
-
         wav.write(
             "voice_input.wav",
             sample_rate,
