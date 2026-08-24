@@ -172,15 +172,11 @@ st.markdown(
 
 @st.cache_resource
 def load_model():
-
     sentiment_pipeline = pipeline(
         "sentiment-analysis",
-        model="./models/distilbert_sentiment",
-        tokenizer="./models/distilbert_sentiment"
+        model="distilbert-base-uncased-finetuned-sst-2-english"
     )
-
     return sentiment_pipeline
-
 
 sentiment_pipeline = load_model()
 
